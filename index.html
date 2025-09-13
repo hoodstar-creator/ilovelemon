@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학급 인원 확인 현황</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0E1014;
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header - 10% 높이 */
+        .header {
+            height: 10vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 2vh;
+        }
+
+        .date-time {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header-controls {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 15px;
+        }
+
+        .control-btn {
+            padding: 15px 30px;
+            background: #171922;
+            border: none;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: #3F424F;
+            transform: translateY(-2px);
+        }
+
+        /* Main Content - 88% 높이 */
+        .main-content {
+            height: 88vh;
+            display: grid;
+            grid-template-columns: 25vw 75vw;
+            gap: 2vw;
+        }
+
+        /* Left Panel - 25% 너비 */
+        .left-panel {
+            background: #171922;
+            border-radius: 20px;
+            padding: 2vw;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5vh;
+        }
+
+        .stats-card {
+            background: #131724;
+            border-radius: 15px;
+            padding: 2vh 1vw;
+            text-align: center;
+            flex: 0 0 auto;
+        }
+
+        .stats-title {
+            font-size: 1.4rem;
+            margin-bottom: 1vh;
+            color: #e0e0e0;
+        }
+
+        .stats-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .총원 { border-left: 6px solid #4CAF50; }
+        .현원 { border-left: 6px solid #2196F3; }
+        .결원 { border-left: 6px solid #f44336; }
+
+        /* Schedule Section */
+        .schedule-section {
+            flex: 1;
+            background: #131724;
+            border-radius: 15px;
+            padding: 2vh 1vw;
+            overflow-y: auto;
+        }
+
+        .schedule-title {
+            font-size: 1.6rem;
+            margin-bottom: 2vh;
+            text-align: center;
+            color: #e0e0e0;
+        }
+
+        .schedule-item {
+            background: #171922;
+            border-radius: 12px;
+            padding: 1.5vh 1vw;
+            margin-bottom: 1vh;
+            text-align: center;
+        }
+
+        .d-day {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 0.5vh;
+        }
+
+        .schedule-date {
+            font-size: 1.1rem;
+            color: #e0e0e0;
+        }
+
+        /* Right Panel - 75% 너비 */
+        .right-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 1.5vw;
+        }
+
+        .zone {
+            background: #131724;
+            border-radius: 20px;
+            padding: 2vh 1vw;
+        }
+
+        .zone-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 2vh;
+            text-align: center;
+            padding: 1.5vh;
+            background: #171922;
+            border-radius: 12px;
+        }
+
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0.8vw;
+            height: calc(100% - 8vh);
+            overflow-y: auto;
+        }
+
+        .student-number {
+            background: #3F424F;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: move;
+            transition: all 0.3s ease;
+            user-select: none;
+            touch-action: none;
+            min-height: 4.5vh;
+            padding: 0.5vh 0.2vw;
+            aspect-ratio: 1;
+        }
+
+        .student-number:hover {
+            background: #4A4D5A;
+            transform: scale(1.05);
+        }
+
+        .student-number.dragging {
+            opacity: 0.7;
+            transform: scale(1.1);
+            z-index: 1000;
+        }
+
+        .student-reason {
+            font-size: 0.8rem;
+            color: #FFD700;
+            margin-top: 0.3vh;
+            text-align: center;
+            word-break: break-all;
+            line-height: 1.2;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .zone.drag-over {
+            background: #1F2332;
+            border: 3px dashed #3F424F;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+
+        .modal-content {
+            background-color: #171922;
+            margin: 20vh auto;
+            padding: 3vh 2vw;
+            border-radius: 20px;
+            width: 30vw;
+            text-align: center;
+        }
+
+        .modal-title {
+            font-size: 2rem;
+            margin-bottom: 3vh;
+            color: white;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 1.5vh 1vw;
+            border: none;
+            border-radius: 12px;
+            background: #3F424F;
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 3vh;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            background: #4A4D5A;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1vw;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 1.5vh 2vw;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 8vw;
+        }
+
+        .modal-btn.confirm {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .modal-btn.cancel {
+            background: #f44336;
+            color: white;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        /* 스크롤바 스타일 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #171922;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3F424F;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4A4D5A;
+        }
+
+        /* 반응형 - 1920x1080 미만에서만 적용 */
+        @media (max-width: 1919px) or (max-height: 1079px) {
+            .date-time {
+                font-size: 2.5rem;
+            }
+            
+            .main-content {
+                grid-template-columns: 300px 1fr;
+            }
+            
+            .numbers-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .modal-content {
+                width: 400px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .right-panel {
+                grid-template-columns: 1fr;
+                grid-template-rows: repeat(6, 1fr);
+            }
+            
+            .header-controls {
+                position: relative;
+                margin-top: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="date-time" id="dateTime"></div>
+            <div class="header-controls">
+                <button class="control-btn" id="fullscreenBtn">전체화면</button>
+                <button class="control-btn" id="allToClassroomBtn">모두교실</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="stats-card 총원">
+                    <div class="stats-title">총원</div>
+                    <div class="stats-number" id="totalCount">31명</div>
+                </div>
+                <div class="stats-card 현원">
+                    <div class="stats-title">현원(교실)</div>
+                    <div class="stats-number" id="presentCount">31명</div>
+                </div>
+                <div class="stats-card 결원">
+                    <div class="stats-title">결원</div>
+                    <div class="stats-number" id="absentCount">0명</div>
+                </div>
+                
+                <div class="schedule-section">
+                    <div class="schedule-title">일정</div>
+                    <div id="scheduleList"></div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="zone" id="교실">
+                    <div class="zone-title">교실</div>
+                    <div class="numbers-grid" id="교실Grid"></div>
+                </div>
+                
+                <div class="zone" id="복도">
+                    <div class="zone-title">복도</div>
+                    <div class="numbers-grid" id="복도Grid"></div>
+                </div>
+
+                <div class="zone" id="화장실정수기">
+                    <div class="zone-title">화장실/정수기</div>
+                    <div class="numbers-grid" id="화장실정수기Grid"></div>
+                </div>
+
+                <div class="zone" id="동아리">
+                    <div class="zone-title">동아리</div>
+                    <div class="numbers-grid" id="동아리Grid"></div>
+                </div>
+
+                <div class="zone" id="방과후">
+                    <div class="zone-title">방과후</div>
+                    <div class="numbers-grid" id="방과후Grid"></div>
+                </div>
+
+                <div class="zone" id="그외">
+                    <div class="zone-title">그외</div>
+                    <div class="numbers-grid" id="그외Grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 사유 입력 모달 -->
+    <div id="reasonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">사유를 입력해주세요</div>
+            <input type="text" id="reasonInput" class="modal-input" placeholder="예: 상담, 병원, 조퇴 등">
+            <div class="modal-buttons">
+                <button class="modal-btn confirm" id="confirmReason">확인</button>
+                <button class="modal-btn cancel" id="cancelReason">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AttendanceSystem {
+            constructor() {
+                this.totalStudents = 31; // 31은 자퇴했으므로 제외
+                this.students = this.loadStudentData();
+                this.schedules = this.loadScheduleData();
+                this.zones = ['교실', '복도', '화장실정수기', '동아리', '방과후', '그외'];
+                this.pendingMove = null; // 그외로 이동 시 임시 저장
+                this.init();
+            }
+
+            init() {
+                this.updateDateTime();
+                this.renderStudents();
+                this.updateStats();
+                this.renderSchedules();
+                this.setupEventListeners();
+                this.setupStorageListener();
+                
+                // 1초마다 시간 업데이트
+                setInterval(() => this.updateDateTime(), 1000);
+                // 1초마다 일정 데이터 동기화 확인
+                setInterval(() => this.syncScheduleData(), 1000);
+            }
+
+            // 학생 데이터 로드
+            loadStudentData() {
+                const saved = localStorage.getItem('attendanceData');
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+                
+                // 기본값: 모든 학생이 교실에 있음 (31번 제외)
+                const students = {};
+                for (let i = 1; i <= 32; i++) {
+                    if (i !== 31) { // 31번은 자퇴
+                        students[i] = { location: '교실', reason: null };
+                    }
+                }
+                return students;
+            }
+
+            // 일정 데이터 로드
+            loadScheduleData() {
+                const saved = localStorage.getItem('scheduleData');
+                return saved ? JSON.parse(saved) : [];
+            }
+
+            // 학생 데이터 저장
+            saveStudentData() {
+                localStorage.setItem('attendanceData', JSON.stringify(this.students));
+            }
+
+            // 일정 데이터 저장
+            saveScheduleData() {
+                localStorage.setItem('scheduleData', JSON.stringify(this.schedules));
+            }
+
+            // 일정 데이터 동기화 (다른 페이지에서 변경된 경우)
+            syncScheduleData() {
+                const currentSchedules = localStorage.getItem('scheduleData');
+                const savedSchedules = JSON.stringify(this.schedules);
+                
+                if (currentSchedules !== savedSchedules) {
+                    this.schedules = JSON.parse(currentSchedules || '[]');
+                    this.renderSchedules();
+                }
+            }
+
+            // 스토리지 이벤트 리스너 (다른 탭에서 변경 감지)
+            setupStorageListener() {
+                window.addEventListener('storage', (e) => {
+                    if (e.key === 'scheduleData') {
+                        this.schedules = JSON.parse(e.newValue || '[]');
+                        this.renderSchedules();
+                    }
+                });
+            }
+
+            // 현재 날짜/시간 업데이트
+            updateDateTime() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth() + 1;
+                const date = now.getDate();
+                const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+                const dayName = dayNames[now.getDay()];
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+
+                const period = hours >= 12 ? '오후' : '오전';
+                const displayHours = hours > 12 ? hours - 12 : (hours === '00' ? 12 : hours);
+
+                document.getElementById('dateTime').textContent = 
+                    `${year}년 ${month}월 ${date}일 ${dayName}요일 ${period} ${displayHours}:${minutes}:${seconds}`;
+            }
+
+            // 학생 번호 렌더링
+            renderStudents() {
+                // 모든 그리드 초기화
+                this.zones.forEach(zone => {
+                    const grid = document.getElementById(zone + 'Grid');
+                    if (grid) grid.innerHTML = '';
+                });
+
+                // 각 구역별로 학생들을 정렬하여 배치
+                this.zones.forEach(zone => {
+                    const studentsInZone = Object.keys(this.students)
+                        .filter(number => this.students[number].location === zone)
+                        .sort((a, b) => parseInt(a) - parseInt(b)); // 숫자 순으로 정렬
+
+                    const grid = document.getElementById(zone + 'Grid');
+                    if (grid) {
+                        studentsInZone.forEach(number => {
+                            const studentEl = this.createStudentElement(number);
+                            grid.appendChild(studentEl);
+                        });
+                    }
+                });
+            }
+
+            // 학생 요소 생성
+            createStudentElement(number) {
+                const div = document.createElement('div');
+                div.className = 'student-number';
+                div.draggable = true;
+                div.dataset.number = number;
+
+                const studentData = this.students[number];
+                
+                // 번호 표시
+                const numberSpan = document.createElement('div');
+                numberSpan.textContent = number;
+                div.appendChild(numberSpan);
+
+                // 사유 표시 (그외에 있을 때만)
+                if (studentData.location === '그외' && studentData.reason) {
+                    const reasonSpan = document.createElement('div');
+                    reasonSpan.className = 'student-reason';
+                    reasonSpan.textContent = studentData.reason;
+                    div.appendChild(reasonSpan);
+                }
+
+                // 터치 이벤트
+                div.addEventListener('touchstart', this.handleTouchStart.bind(this));
+                div.addEventListener('touchmove', this.handleTouchMove.bind(this));
+                div.addEventListener('touchend', this.handleTouchEnd.bind(this));
+
+                // 드래그 이벤트
+                div.addEventListener('dragstart', this.handleDragStart.bind(this));
+                div.addEventListener('dragend', this.handleDragEnd.bind(this));
+
+                return div;
+            }
+
+            // 통계 업데이트
+            updateStats() {
+                const classroomCount = Object.values(this.students).filter(data => data.location === '교실').length;
+                const outsideCount = Object.values(this.students).filter(data => data.location !== '교실').length;
+
+                document.getElementById('totalCount').textContent = `${this.totalStudents}명`;
+                document.getElementById('presentCount').textContent = `${classroomCount}명`;
+                document.getElementById('absentCount').textContent = `${outsideCount}명`;
+            }
+
+            // 일정 렌더링
+            renderSchedules() {
+                const scheduleList = document.getElementById('scheduleList');
+                scheduleList.innerHTML = '';
+
+                if (this.schedules.length === 0) {
+                    scheduleList.innerHTML = '<div style="text-align: center; color: #ccc; padding: 20px;">등록된 일정이 없습니다</div>';
+                    return;
+                }
+
+                // 날짜순으로 정렬
+                const sortedSchedules = [...this.schedules].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                sortedSchedules.forEach(schedule => {
+                    const scheduleEl = document.createElement('div');
+                    scheduleEl.className = 'schedule-item';
+                    
+                    const targetDate = new Date(schedule.date);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    targetDate.setHours(0, 0, 0, 0);
+                    
+                    const diffTime = targetDate - today;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    let dDayText;
+                    if (diffDays > 0) {
+                        dDayText = `D-${diffDays}`;
+                    } else if (diffDays === 0) {
+                        dDayText = 'D-DAY';
+                    } else {
+                        dDayText = `D+${Math.abs(diffDays)}`;
+                    }
+
+                    scheduleEl.innerHTML = `
+                        <div class="d-day">${dDayText}</div>
+                        <div class="schedule-date">${schedule.name}</div>
+                        <div class="schedule-date">${schedule.date}</div>
+                    `;
+                    
+                    scheduleList.appendChild(scheduleEl);
+                });
+            }
+
+            // 터치/드래그 이벤트 처리
+            handleTouchStart(e) {
+                this.draggedElement = e.target.closest('.student-number');
+                if (this.draggedElement) {
+                    this.draggedElement.classList.add('dragging');
+                }
+                e.preventDefault();
+            }
+
+            handleTouchMove(e) {
+                if (!this.draggedElement) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const zone = elementBelow?.closest('.zone');
+                
+                // 드래그 오버 효과
+                document.querySelectorAll('.zone').forEach(z => z.classList.remove('drag-over'));
+                if (zone) {
+                    zone.classList.add('drag-over');
+                }
+            }
+
+            handleTouchEnd(e) {
+                if (!this.draggedElement) return;
+                
+                const touch = e.changedTouches[0];
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                const zone = elementBelow?.closest('.zone');
+                
+                if (zone) {
+                    this.moveStudent(this.draggedElement.dataset.number, zone.id);
+                }
+                
+                this.draggedElement.classList.remove('dragging');
+                document.querySelectorAll('.zone').forEach(z => z.classList.remove('drag-over'));
+                this.draggedElement = null;
+            }
+
+            handleDragStart(e) {
+                this.draggedElement = e.target.closest('.student-number');
+                if (this.draggedElement) {
+                    this.draggedElement.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', this.draggedElement.dataset.number);
+                }
+            }
+
+            handleDragEnd(e) {
+                if (e.target.closest('.student-number')) {
+                    e.target.closest('.student-number').classList.remove('dragging');
+                }
+                document.querySelectorAll('.zone').forEach(zone => zone.classList.remove('drag-over'));
+            }
+
+            // 학생 이동
+            moveStudent(studentNumber, targetZone) {
+                if (targetZone === '그외') {
+                    // 그외로 이동 시 사유 입력 모달 표시
+                    this.pendingMove = { studentNumber, targetZone };
+                    this.showReasonModal();
+                } else {
+                    // 다른 구역으로 이동 시 사유 제거
+                    this.students[studentNumber] = { location: targetZone, reason: null };
+                    this.saveStudentData();
+                    this.renderStudents();
+                    this.updateStats();
+                }
+            }
+
+            // 사유 입력 모달 표시
+            showReasonModal() {
+                const modal = document.getElementById('reasonModal');
+                const input = document.getElementById('reasonInput');
+                modal.style.display = 'block';
+                input.value = '';
+                input.focus();
+            }
+
+            // 사유 입력 모달 숨기기
+            hideReasonModal() {
+                const modal = document.getElementById('reasonModal');
+                modal.style.display = 'none';
+                this.pendingMove = null;
+            }
+
+            // 사유 확인 처리
+            confirmReason() {
+                const reason = document.getElementById('reasonInput').value.trim();
+                if (this.pendingMove && reason) {
+                    this.students[this.pendingMove.studentNumber] = {
+                        location: this.pendingMove.targetZone,
+                        reason: reason
+                    };
+                    this.saveStudentData();
+                    this.renderStudents();
+                    this.updateStats();
+                }
+                this.hideReasonModal();
+            }
+
+            // 이벤트 리스너 설정
+            setupEventListeners() {
+                // 드롭 영역 설정
+                document.querySelectorAll('.zone').forEach(zone => {
+                    zone.addEventListener('dragover', e => {
+                        e.preventDefault();
+                        zone.classList.add('drag-over');
+                    });
+
+                    zone.addEventListener('dragleave', e => {
+                        if (!zone.contains(e.relatedTarget)) {
+                            zone.classList.remove('drag-over');
+                        }
+                    });
+
+                    zone.addEventListener('drop', e => {
+                        e.preventDefault();
+                        zone.classList.remove('drag-over');
+                        
+                        const studentNumber = e.dataTransfer.getData('text/plain');
+                        this.moveStudent(studentNumber, zone.id);
+                    });
+                });
+
+                // 전체화면 버튼
+                document.getElementById('fullscreenBtn').addEventListener('click', () => {
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                    } else {
+                        document.documentElement.requestFullscreen();
+                    }
+                });
+
+                // 모두교실 버튼
+                document.getElementById('allToClassroomBtn').addEventListener('click', () => {
+                    Object.keys(this.students).forEach(number => {
+                        this.students[number] = { location: '교실', reason: null };
+                    });
+                    this.saveStudentData();
+                    this.renderStudents();
+                    this.updateStats();
+                });
+
+                // 모달 이벤트
+                document.getElementById('confirmReason').addEventListener('click', () => {
+                    this.confirmReason();
+                });
+
+                document.getElementById('cancelReason').addEventListener('click', () => {
+                    this.hideReasonModal();
+                });
+
+                document.getElementById('reasonInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.confirmReason();
+                    }
+                });
+
+                // 모달 외부 클릭 시 닫기
+                document.getElementById('reasonModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'reasonModal') {
+                        this.hideReasonModal();
+                    }
+                });
+            }
+        }
+
+        // 앱 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            new AttendanceSystem();
+        });
+    </script>
+</body>
+</html>
